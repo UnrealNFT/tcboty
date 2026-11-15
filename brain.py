@@ -1,5 +1,6 @@
 import os
 import logging
+import httpx
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
@@ -9,6 +10,7 @@ client = AsyncOpenAI(
     base_url="https://llm.wavespeed.ai/v1",
     timeout=600.0,
     max_retries=2,
+    http_client=httpx.AsyncClient(timeout=httpx.Timeout(600.0)),
 )
 
 MODEL = os.getenv("WAVESPEED_MODEL", "moonshotai/kimi-k2.7-code")
