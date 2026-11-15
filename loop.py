@@ -71,10 +71,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"/start recu de user_id={user.id}")
     await update.message.reply_text(
-        f"Salut {user.first_name} !\n"
-        "Donne-moi des ordres sur ton repo GitHub (format `owner/repo`).\n"
-        "Exemple : *dans mon repo toto/projet, ajoute un fichier README.md*",
-        parse_mode="Markdown",
+        f"Salut {user.first_name}.\n"
+        "Par defaut : Kimi K2.7.\n"
+        "/k3 ta demande\n"
+        "/claude ta demande\n"
+        "/grok ta demande",
     )
 
 
@@ -102,7 +103,7 @@ async def safe_reply(update, text):
             await update.message.reply_text(f"Erreur envoi: {exc2}")
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, model=None):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
 
@@ -110,8 +111,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Acces refuse. Ton user ID n'est pas autorise.")
         return
 
-    incoming = update.message.text
-    logger.info(f"Message de {user_id}: {incoming[:120]}...")
+    if model:
+        incoming = " ".join(context.args).strip()
+        if not incoming:
+            await update.message.reply_text("Ecris la demande apres la commande.")
+            return
+    else:
+        incoming = update.message.text
+        model = brain.MODEL
+
+    logger.info(f"Message de {user_id} model={model}: {incoming[:120]}...")
 
     messages = load_history(chat_id)
     messages.append({"role": "user", "content": incoming})
@@ -124,7 +133,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         for step in range(max_steps):
             logger.info(f"=== Boucle LLM step {step + 1}/{max_steps} ===")
-            assistant_msg = await brain.chat(messages)
+            assistant_msg = await brain.chat(messages, model=model)
             messages.append(brain.assistant_to_dict(assistant_msg))
 
             if getattr(assistant_msg, "tool_calls", None):
@@ -153,6 +162,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erreur : {exc}")
 
 
+def _commande(cle):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await handle_message(update, context, model=brain.MODELS[cle])
+    return handler
+
+
 if __name__ == "__main__":
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -162,6 +177,9 @@ if __name__ == "__main__":
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
+    app.add_handler(CommandHandler("k3", _commande("k3")))
+    app.add_handler(CommandHandler("claude", _commande("claude")))
+    app.add_handler(CommandHandler("grok", _commande("grok")))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot lance")

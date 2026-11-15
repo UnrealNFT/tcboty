@@ -12,6 +12,13 @@ client = AsyncOpenAI(
 )
 
 MODEL = os.getenv("WAVESPEED_MODEL", "moonshotai/kimi-k2.7-code")
+
+MODELS = {
+    "kimi": "moonshotai/kimi-k2.7-code",
+    "k3": "moonshotai/kimi-k3",
+    "claude": "anthropic/claude-opus-5.5",
+    "grok": "x-ai/grok-4.7",
+}
 DEFAULT_REPO = os.getenv("DEFAULT_REPO", "")
 
 SYSTEM_PROMPT = f"""Tu es un agent codeur controle depuis Telegram.
@@ -200,10 +207,11 @@ TOOLS = [
 ]
 
 
-async def chat(messages):
-    logger.info(f"Wavespeed request avec {len(messages)} messages")
+async def chat(messages, model=None):
+    chosen = model or MODEL
+    logger.info(f"Wavespeed request model={chosen} messages={len(messages)}")
     response = await client.chat.completions.create(
-        model=MODEL,
+        model=chosen,
         messages=messages,
         tools=TOOLS,
         tool_choice="auto",
