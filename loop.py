@@ -25,6 +25,8 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+# httpx loggue l'URL complete (qui contient le token Telegram) : on le fait taire.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 ALLOWED_USER_IDS = {
     int(x.strip())
