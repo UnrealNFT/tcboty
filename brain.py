@@ -217,11 +217,17 @@ async def chat(messages, model=None):
         model=chosen,
         messages=messages,
         tools=TOOLS,
+        max_tokens=32000,
         tool_choice="auto",
     )
     if getattr(response, "error", None):
         raise RuntimeError(response.error)
-    msg = response.choices[0].message
+    choice = response.choices[0]
+    msg = choice.message
+    fr = getattr(choice, 'finish_reason', None)
+    logger.info(f'finish_reason={fr}')
+    if not (msg.content or '').strip() and not getattr(msg, 'tool_calls', None):
+        msg.content = 'Reponse vide du modele (finish_reason=' + str(fr) + '). Limite de tokens atteinte ? Relance avec une demande plus petite.'
     logger.info(f"Wavespeed response: role={msg.role} content_len={len(msg.content or '')} tool_calls={bool(getattr(msg, 'tool_calls', None))}")
     return msg
 
